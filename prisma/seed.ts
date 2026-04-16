@@ -2,6 +2,18 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
+  const categoryNames = [
+    'Супы',
+    'Вторые блюда',
+    'Салаты',
+    'Гарниры',
+    'Выпечка',
+    'Десерты',
+    'Напитки',
+    'Завтрак',
+    'Сопутствующие товары',
+  ]
+
   // 1. Очистка базы (чтобы не было дублей и ошибок)
   await prisma.dish.deleteMany({})
   await prisma.category.deleteMany({})
@@ -17,9 +29,24 @@ async function main() {
   })
 
   // 3. Создаем категории
-  const catSoups = await prisma.category.create({ data: { name: 'Супы' } })
-  const catMain = await prisma.category.create({ data: { name: 'Вторые блюда' } })
-  const catSalads = await prisma.category.create({ data: { name: 'Салаты' } })
+  await prisma.category.createMany({
+    data: categoryNames.map((name) => ({ name })),
+    skipDuplicates: true,
+  })
+
+  const allCategories = await prisma.category.findMany({
+    where: { name: { in: categoryNames } },
+    select: { id: true, name: true },
+  })
+
+  const categoryMap = new Map(allCategories.map((category) => [category.name, category.id]))
+  const getCategoryId = (name: string) => {
+    const id = categoryMap.get(name)
+    if (!id) {
+      throw new Error(`Category not found: ${name}`)
+    }
+    return id
+  }
 
   // 4. Создаем 10 эталонных блюд
   const dishes = [
@@ -31,7 +58,7 @@ async function main() {
       proteins: 12, fats: 8, carbs: 25,
       weight: '300/30',
       note: '',
-      categoryId: catSoups.id,
+      categoryId: getCategoryId('Супы'),
     },
     {
       name: 'Том Ям с курицей',
@@ -41,7 +68,7 @@ async function main() {
       proteins: 15, fats: 18, carbs: 35,
       weight: '350/50',
       note: 'Острое',
-      categoryId: catSoups.id,
+      categoryId: getCategoryId('Супы'),
     },
     {
       name: 'Котлета По-Киевски',
@@ -51,7 +78,7 @@ async function main() {
       proteins: 22, fats: 28, carbs: 15,
       weight: '150г',
       note: '',
-      categoryId: catMain.id,
+      categoryId: getCategoryId('Вторые блюда'),
     },
     {
       name: 'Плов со свининой',
@@ -61,7 +88,7 @@ async function main() {
       proteins: 18, fats: 32, carbs: 45,
       weight: '250г',
       note: 'содержит свинину 🐷',
-      categoryId: catMain.id,
+      categoryId: getCategoryId('Вторые блюда'),
     },
     {
       name: 'Паста Карбонара',
@@ -71,7 +98,7 @@ async function main() {
       proteins: 20, fats: 35, carbs: 55,
       weight: '300г',
       note: '🐷',
-      categoryId: catMain.id,
+      categoryId: getCategoryId('Вторые блюда'),
     },
     {
       name: 'Цезарь с курицей',
@@ -81,7 +108,7 @@ async function main() {
       proteins: 18, fats: 12, carbs: 10,
       weight: '210г',
       note: '',
-      categoryId: catSalads.id,
+      categoryId: getCategoryId('Салаты'),
     },
     {
       name: 'Оливье',
@@ -91,7 +118,7 @@ async function main() {
       proteins: 8, fats: 22, carbs: 18,
       weight: '180г',
       note: 'содержит свинину 🐷',
-      categoryId: catSalads.id,
+      categoryId: getCategoryId('Салаты'),
     },
     {
       name: 'Гречка с грибами',
@@ -101,7 +128,7 @@ async function main() {
       proteins: 6, fats: 4, carbs: 32,
       weight: '200г',
       note: 'Веган 🌱',
-      categoryId: catMain.id,
+      categoryId: getCategoryId('Вторые блюда'),
     },
     {
       name: 'Стейк из лосося',
@@ -111,7 +138,7 @@ async function main() {
       proteins: 28, fats: 18, carbs: 0,
       weight: '120/30',
       note: 'ПП',
-      categoryId: catMain.id,
+      categoryId: getCategoryId('Вторые блюда'),
     },
     {
       name: 'Винегрет',
@@ -121,7 +148,7 @@ async function main() {
       proteins: 2, fats: 8, carbs: 14,
       weight: '150г',
       note: '🌱',
-      categoryId: catSalads.id,
+      categoryId: getCategoryId('Салаты'),
     }
   ]
 

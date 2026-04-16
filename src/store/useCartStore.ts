@@ -1,78 +1,144 @@
 import { create } from 'zustand'
+import type { CartItem, ClientState } from '@/types/cart'
 
-interface CartItem {
-  id: string
-  name: string
-  price: number
+type Totals = {
   calories: number
   proteins: number
   fats: number
   carbs: number
-  quantity: number 
 }
 
-interface CartState {
-  items: CartItem[]
-  favorites: string[]
-  dailyLimit: number // Добавили лимит в состояние
-  addItem: (item: Omit<CartItem, 'quantity'>) => void
-  removeItem: (id: string) => void
-  toggleFavorite: (id: string) => void
-  setDailyLimit: (limit: number) => void // Функция изменения лимита
-  getTotalStats: () => { 
-    calories: number, 
-    proteins: number, 
-    fats: number, 
-    carbs: number 
+interface CartState extends ClientState {
+  isHydrated: boolean
+  initialize: () => Promise<void>
+  addItem: (item: Omit<CartItem, 'quantity'>) => Promise<void>
+  removeItem: (id: string) => Promise<void>
+  removeItemCompletely: (id: string) => Promise<void>
+  toggleFavorite: (id: string) => Promise<void>
+  setDailyLimit: (limit: number) => Promise<void>
+  getTotalStats: () => Totals
+  getTotalCount: () => number
+}
+
+type StateResponse = {
+  state: ClientState
+  error?: string
+}
+
+const applyServerState = (state: ClientState) => ({
+  items: state.items,
+  favorites: state.favorites,
+  dailyLimit: state.dailyLimit,
+  isHydrated: true,
+})
+
+const fetchState = async (): Promise<ClientState> => {
+  const response = await fetch('/api/state', {
+    method: 'GET',
+    cache: 'no-store',
+  })
+
+  const payload = (await response.json()) as StateResponse
+
+  if (!response.ok || !payload.state) {
+    throw new Error(payload.error || 'Failed to fetch state')
   }
+
+  return payload.state
+}
+
+const postState = async <TBody>(url: string, body: TBody, method: 'POST' | 'DELETE' = 'POST') => {
+  const response = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  const payload = (await response.json()) as StateResponse
+
+  if (!response.ok || !payload.state) {
+    throw new Error(payload.error || 'Failed to update state')
+  }
+
+  return payload.state
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   favorites: [],
-  dailyLimit: 1200, // Значение по умолчанию
+  dailyLimit: 1200,
+  isHydrated: false,
 
-  setDailyLimit: (limit) => set({ dailyLimit: limit }),
+  initialize: async () => {
+    if (get().isHydrated) return
 
-  toggleFavorite: (id) =>
-    set((state) => ({
-      ...state,
-      favorites: state.favorites.includes(id)
-        ? state.favorites.filter((favId) => favId !== id)
-        : [...state.favorites, id],
-    })),
-
-  addItem: (newItem) => set((state) => {
-    const existingItem = state.items.find(i => i.id === newItem.id);
-    if (existingItem) {
-      return {
-        items: state.items.map(i => 
-          i.id === newItem.id ? { ...i, quantity: i.quantity + 1 } : i
-        )
-      };
+    try {
+      const serverState = await fetchState()
+      set(applyServerState(serverState))
+    } catch (error) {
+      console.error('State hydrate failed:', error)
+      set({ isHydrated: true })
     }
-    return { items: [...state.items, { ...newItem, quantity: 1 }] };
-  }),
+  },
 
-  removeItem: (id) => set((state) => {
-    const existingItem = state.items.find(i => i.id === id);
-    if (existingItem?.quantity === 1) {
-      return { items: state.items.filter(i => i.id !== id) };
+  addItem: async (newItem) => {
+    try {
+      const serverState = await postState('/api/cart', { dishId: newItem.id, delta: 1 })
+      set(applyServerState(serverState))
+    } catch (error) {
+      console.error('Add item failed:', error)
     }
-    return {
-      items: state.items.map(i => 
-        i.id === id ? { ...i, quantity: i.quantity - 1 } : i
-      )
-    };
-  }),
+  },
+
+  removeItem: async (id) => {
+    try {
+      const serverState = await postState('/api/cart', { dishId: id, delta: -1 })
+      set(applyServerState(serverState))
+    } catch (error) {
+      console.error('Remove item failed:', error)
+    }
+  },
+
+  removeItemCompletely: async (id) => {
+    try {
+      const serverState = await postState('/api/cart', { dishId: id }, 'DELETE')
+      set(applyServerState(serverState))
+    } catch (error) {
+      console.error('Remove item completely failed:', error)
+    }
+  },
+
+  toggleFavorite: async (id) => {
+    try {
+      const serverState = await postState('/api/favorites', { dishId: id })
+      set(applyServerState(serverState))
+    } catch (error) {
+      console.error('Toggle favorite failed:', error)
+    }
+  },
+
+  setDailyLimit: async (limit) => {
+    try {
+      const safeLimit = Math.max(1, Math.floor(limit))
+      const serverState = await postState('/api/daily-limit', { dailyLimit: safeLimit })
+      set(applyServerState(serverState))
+    } catch (error) {
+      console.error('Set daily limit failed:', error)
+    }
+  },
 
   getTotalStats: () => {
-    const items = get().items;
-    return items.reduce((acc, item) => ({
-      calories: acc.calories + (item.calories * item.quantity),
-      proteins: acc.proteins + (item.proteins * item.quantity),
-      fats: acc.fats + (item.fats * item.quantity),
-      carbs: acc.carbs + (item.carbs * item.quantity),
-    }), { calories: 0, proteins: 0, fats: 0, carbs: 0 });
-  }
+    const items = get().items
+    return items.reduce(
+      (acc, item) => ({
+        calories: acc.calories + item.calories * item.quantity,
+        proteins: acc.proteins + item.proteins * item.quantity,
+        fats: acc.fats + item.fats * item.quantity,
+        carbs: acc.carbs + item.carbs * item.quantity,
+      }),
+      { calories: 0, proteins: 0, fats: 0, carbs: 0 },
+    )
+  },
+
+  getTotalCount: () => get().items.reduce((sum, item) => sum + item.quantity, 0),
 }))

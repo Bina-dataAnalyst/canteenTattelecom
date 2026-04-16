@@ -1,26 +1,51 @@
 import { prisma } from '@/lib/prisma'
-import { DishCard } from '@/components/shared/DishCard'
 import { HeaderWidgets } from '@/components/shared/HeaderWidgets';
+import { CategoryShowcase } from '@/components/shared/CategoryShowcase'
 import Image from 'next/image';
 import type { Category, Dish } from '@prisma/client'
+import { getAppAssetUrls } from '@/lib/server/app-assets'
 
 // src/app/page.tsx
 export default async function HomePage() {
   type CategoryWithDishes = Category & { dishes: Dish[] }
+  const defaultCategoryOrder = [
+    'Супы',
+    'Вторые блюда',
+    'Салаты',
+    'Гарниры',
+    'Выпечка',
+    'Десерты',
+    'Напитки',
+    'Завтрак',
+    'Сопутствующие товары',
+  ]
 
   let categories: CategoryWithDishes[] = []
+  let appAssets: Partial<Record<'hero_main' | 'hero_decor', string>> = {}
   let dbError: string | null = null
 
   try {
-    categories = await prisma.category.findMany({
-      include: {
-        dishes: {
-          where: {
-            isAvailable: true, // Показываем только то, что НЕ в стоп-листе
+    await prisma.category.createMany({
+      data: defaultCategoryOrder.map((name) => ({ name })),
+      skipDuplicates: true,
+    })
+
+    const [loadedCategories, loadedAssets] = await Promise.all([
+      prisma.category.findMany({
+        orderBy: { name: 'asc' },
+        include: {
+          dishes: {
+            where: {
+              isAvailable: true, // Показываем только то, что НЕ в стоп-листе
+            },
           },
         },
-      },
-    })
+      }),
+      getAppAssetUrls(),
+    ])
+
+    categories = loadedCategories
+    appAssets = loadedAssets
   } catch (e) {
     dbError = e instanceof Error ? e.message : 'Unknown database error'
   }
@@ -58,7 +83,7 @@ export default async function HomePage() {
        {/* --- Магия позиционирования тарелки (справа) --- */}
        <div className="absolute right-[-10%] -bottom-32 w-[1000px] h-[750px] z-20 pointer-events-none flex items-center justify-center">
           <Image 
-            src="/images/hero-dish.png" // Убедись, что путь правильный
+            src={appAssets.hero_main ?? '/images/hero-dish.png'}
             alt="Тарелка с домашней едой"
             width={950} // Ширина картинки
             height={750} // Высота картинки
@@ -70,7 +95,7 @@ export default async function HomePage() {
         {/* Вторая картинка (салат в углу слева), которая была на макете */}
         <div className="absolute left-[-20%] -bottom-40 w-[650px] z-10 pointer-events-none opacity-90">
           <Image 
-            src="/images/salad.png" // Если у тебя есть вторая картинка из макета
+            src={appAssets.hero_decor ?? '/images/salad.png'}
             alt="Декор салат"
             width={470} 
             height={450} 
@@ -95,20 +120,7 @@ export default async function HomePage() {
       </section>
 
       {/* 4. Категории */}
-      <main className="bg-[#E8F5E9] py-12">
-        <div className="container mx-auto px-10">
-          {categories.map(cat => (
-            <div key={cat.id} className="mb-12">
-              <h2 className="text-2xl font-bold text-[#2E7D32] mb-6">{cat.name}</h2>
-              <div className="grid grid-cols-5 gap-5">
-                {cat.dishes.map(dish => (
-                  <DishCard key={dish.id} dish={dish} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
+      <CategoryShowcase categories={categories} preferredOrder={defaultCategoryOrder} />
     </div>
   );
 }

@@ -30,13 +30,27 @@ model Dish {
   carbs        Float?
   weight       String?
   note         String?
-  image        String?
+  image        String?   // URL картинки, например /api/media/<id>
   stock        Int      @default(0) // Для "Осталось мало"
   canteen      Canteen  @relation(fields: [canteenId], references: [id])
   canteenId    String
   isAvailable  Boolean  @default(true)
 
   favoritedBy  Favorite[]
+}
+
+model Combo {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  calories    Int?
+  proteins    Float?
+  fats        Float?
+  carbs       Float?
+  image       String?  // URL картинки, например /api/media/<id>
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
 }
 
 model User {
@@ -80,4 +94,21 @@ model Category {
   id     String @id @default(cuid())
   name   String @unique
   dishes Dish[]
+}
+
+model Media {
+  id        String     @id @default(cuid())
+  fileName  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime   @default(now())
+  assets    AppAsset[]
+}
+
+model AppAsset {
+  key       String   @id // hero_main, hero_decor, ...
+  mediaId   String
+  media     Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
 }
