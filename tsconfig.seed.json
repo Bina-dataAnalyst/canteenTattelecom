@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ES6",
+    "lib": ["esnext"],
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "types": ["node"],
+    "typeRoots": ["./canteen/node_modules/@types", "./node_modules/@types"]
+  },
+  "include": ["prisma/**/*.ts"]
+}
