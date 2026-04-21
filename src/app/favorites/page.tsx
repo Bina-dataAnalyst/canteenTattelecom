@@ -45,20 +45,20 @@ export default function FavoritesPage() {
   }, [])
 
   return (
-    <main className="bg-[#E8F5E9] min-h-screen py-10">
-      <div className="container mx-auto px-10">
-        <h1 className="text-3xl font-black text-[#2E7D32] mb-2">Избранные блюда</h1>
+    <main className="min-h-screen bg-[#E8F5E9] py-8 sm:py-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+        <h1 className="mb-2 text-2xl font-black text-[#2E7D32] sm:text-3xl">Избранные блюда</h1>
         <p className="text-gray-600 mb-8">Здесь собраны блюда, которые ты лайкал.</p>
 
         {loading && <p className="text-gray-500">Загружаем...</p>}
         {error && <p className="text-red-600">{error}</p>}
 
         {!loading && !error && items.length === 0 && (
-          <div className="bg-white rounded-3xl p-8 text-gray-500">Пока нет избранных блюд.</div>
+          <div className="rounded-lg bg-white p-6 text-gray-500 sm:p-8">Пока нет избранных блюд.</div>
         )}
 
         {!loading && !error && items.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 lg:gap-5">
             {items.map((dish) => (
               <DishCard key={dish.id} dish={dish} />
             ))}

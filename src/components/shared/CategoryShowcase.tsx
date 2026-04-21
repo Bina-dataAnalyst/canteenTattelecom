@@ -56,23 +56,28 @@ export const CategoryShowcase = ({
   }, [selected, sortedCategories]);
 
   return (
-    <main className="bg-[#E8F5E9] py-12">
-      <div className="container mx-auto px-10">
-        <div className="mb-8 rounded-[28px] border border-orange-200/70 bg-white/70 backdrop-blur-xl shadow-[0_12px_32px_-20px_rgba(249,115,22,0.5)] p-3">
+    <main className="bg-[#E8F5E9] py-10 sm:py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+        <div className="mb-8 rounded-[2rem] border border-white/50 bg-white/30 p-3 shadow-[0_20px_60px_-24px_rgba(15,23,42,0.28)] backdrop-blur-2xl supports-[backdrop-filter]:bg-white/25 sm:p-4">
           <div className="flex gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
             {tabs.map((tab) => {
               const isActive = tab === selected;
+
               return (
                 <button
                   key={tab}
                   onClick={() => setSelected(tab)}
-                  className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ${
+                  className={`relative rounded-full border px-5 py-3 text-sm font-semibold tracking-[0.01em] transition-all duration-300 sm:px-6 ${
                     isActive
-                      ? "bg-orange-500 text-white shadow-[0_8px_18px_-8px_rgba(249,115,22,0.9)] scale-[1.02]"
-                      : "bg-white/85 text-orange-900 hover:bg-orange-50 hover:scale-[1.01]"
+                      ? "border-white/60 bg-white/70 text-orange-600 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.95),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl scale-[1.02]"
+                      : "border-white/35 bg-white/20 text-orange-950/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-xl hover:bg-white/35 hover:text-orange-700 hover:scale-[1.01]"
                   }`}
                 >
-                  {tab}
+                  <span className="relative z-10">{tab}</span>
+
+                  {isActive && (
+                    <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/70 via-white/25 to-white/10" />
+                  )}
                 </button>
               );
             })}
@@ -80,23 +85,23 @@ export const CategoryShowcase = ({
         </div>
 
         {visibleCategories.length === 0 && (
-          <div className="rounded-3xl bg-white p-8 text-gray-500">
+          <div className="rounded-lg bg-white p-6 text-gray-500 sm:p-8">
             В этой категории пока нет блюд.
           </div>
         )}
 
         {visibleCategories.map((category) => (
-          <section key={category.id} className="mb-12">
-            <h2 className="text-2xl font-bold text-[#2E7D32] mb-6">
+          <section key={category.id} className="mb-10 sm:mb-12">
+            <h2 className="mb-5 text-xl font-bold text-[#2E7D32] sm:mb-6 sm:text-2xl">
               {category.name}
             </h2>
 
             {category.dishes.length === 0 ? (
-              <div className="rounded-2xl bg-white/80 border border-white p-6 text-gray-500">
+              <div className="rounded-lg border border-white bg-white/80 p-6 text-gray-500">
                 Блюда в этой категории скоро появятся.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:gap-5 xl:grid-cols-5">
                 {category.dishes.map((dish) => (
                   <DishCard key={dish.id} dish={dish} />
                 ))}

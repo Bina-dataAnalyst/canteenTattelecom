@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import {
   PieChart,
   Pie,
@@ -33,18 +34,66 @@ export const MacrosModal = ({
   const isEmpty = stats.proteins + stats.fats + stats.carbs === 0;
   const hasEnoughData = stats.proteins > 0 && stats.fats > 0 && stats.carbs > 0;
 
-  // Проверяем правило 1:1:4 с допуском +-20%
-  const fatToProteinRatio = hasEnoughData ? stats.fats / stats.proteins : 0;
-  const carbsToProteinRatio = hasEnoughData ? stats.carbs / stats.proteins : 0;
-  const tolerance = 0.2;
+  // 1. Расчеты калорийности (энергетическая ценность)
+  const pCal = stats.proteins * 4;
+  const fCal = stats.fats * 9;
+  const cCal = stats.carbs * 4;
+  const totalCal = pCal + fCal + cCal;
+
+  // 2. Процентное распределение
+  const pPct = totalCal > 0 ? (pCal / totalCal) * 100 : 0;
+  const fPct = totalCal > 0 ? (fCal / totalCal) * 100 : 0;
+  const cPct = totalCal > 0 ? (cCal / totalCal) * 100 : 0;
+
+  // 3. Функция генерации совета
+  const getRecommendation = () => {
+    if (totalCal === 0) return "Добавь блюда, чтобы оценить баланс заказа.";
+
+    const advice = [];
+
+    if (pPct < 10)
+      advice.push(
+        "Маловато белка — добавь мясо, рыбу или бобовые для сытости.",
+      );
+    if (pPct > 25)
+      advice.push("Много белка — это хорошо для мышц, но не забудь про овощи.");
+
+    if (fPct > 40)
+      advice.push(
+        "Многовато жиров — попробуй выбрать блюдо на пару или добавить салат без заправки.",
+      );
+    if (fPct < 20 && totalCal > 300)
+      advice.push(
+        "Полезные жиры важны для мозга — добавь рыбу или блюдо с растительным маслом.",
+      );
+
+    if (cPct > 70)
+      advice.push(
+        "Углеводов с избытком — может, заменим гарнир на свежие овощи?",
+      );
+    if (cPct < 40 && totalCal > 300)
+      advice.push(
+        "Маловато углеводов — может не хватить энергии до конца дня. Добавь гарнир.",
+      );
+
+    return advice.length > 0
+      ? advice[Math.floor(Math.random() * advice.length)] // Берем случайный из подходящих
+      : "Идеальный баланс! Твой организм скажет «спасибо».";
+  };
+
   const isBalanced =
-    hasEnoughData &&
-    Math.abs(fatToProteinRatio - 1) <= tolerance &&
-    Math.abs(carbsToProteinRatio - 4) <= tolerance * 4;
+    totalCal > 0 &&
+    pPct >= 10 &&
+    pPct <= 25 &&
+    fPct >= 20 &&
+    fPct <= 40 &&
+    cPct >= 40 &&
+    cPct <= 70;
+  const adviceText = getRecommendation();
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-[40px] w-full max-w-md p-8 relative shadow-2xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-2xl sm:p-8">
         <button
           onClick={onClose}
           className="absolute top-6 right-6 text-gray-400 hover:text-black"
@@ -52,14 +101,14 @@ export const MacrosModal = ({
           <X size={24} />
         </button>
 
-        <h2 className="text-2xl font-black mb-2 uppercase italic tracking-tighter">
+        <h2 className="mb-2 pr-8 text-xl font-black uppercase sm:text-2xl">
           Твой баланс БЖУ
         </h2>
         <p className="text-gray-500 text-sm mb-6">
           Распределение нутриентов в твоем текущем заказе
         </p>
 
-        <div className="h-[300px] w-full">
+        <div className="h-[240px] w-full sm:h-[300px]">
           {isEmpty ? (
             <div className="h-full flex items-center justify-center text-gray-400 italic">
               Добавь блюда, чтобы увидеть статистику
@@ -71,13 +120,18 @@ export const MacrosModal = ({
                   data={data}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={70}
+                  outerRadius={90}
                   paddingAngle={5}
                   dataKey="value"
+                  cornerRadius={8} // Добавили скругление секторов
                 >
                   {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.color}
+                      stroke="none"
+                    />
                   ))}
                 </Pie>
                 <Tooltip
@@ -93,7 +147,7 @@ export const MacrosModal = ({
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-6">
+        <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-4">
           <div className="text-center">
             <p className="text-[10px] text-gray-400 uppercase font-bold">
               Белки
@@ -116,27 +170,71 @@ export const MacrosModal = ({
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-orange-100 bg-orange-50/70 p-4">
-          <p className="text-xs text-gray-600 leading-relaxed">
-            Рекомендуемое соотношение БЖУ:{" "}
-            <span className="font-bold">1:1:4</span> (белки:жиры:углеводы).
+        <div
+          className={`mt-6 rounded-2xl p-4 border transition-colors duration-300 ${
+            isEmpty
+              ? "bg-gray-50 border-gray-100"
+              : isBalanced
+                ? "bg-emerald-50 border-emerald-100"
+                : "bg-amber-50 border-amber-100"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5">
+              {isEmpty ? (
+                <Smile className="text-gray-400" size={20} />
+              ) : isBalanced ? (
+                <Smile className="text-emerald-600" size={20} />
+              ) : (
+                <Smile className="text-amber-600" size={20} />
+              )}
+            </div>
+            <div>
+              <p
+                className={`text-xs font-bold uppercase tracking-wider mb-1 ${
+                  isEmpty
+                    ? "text-gray-500"
+                    : isBalanced
+                      ? "text-emerald-700"
+                      : "text-amber-700"
+                }`}
+              >
+                {isEmpty
+                  ? "Анализ меню"
+                  : isBalanced
+                    ? "Отличный выбор!"
+                    : "Совет по балансу"}
+              </p>
+              <p className="text-xs text-gray-600 leading-relaxed italic">
+                {adviceText}
+              </p>
+            </div>
+          </div>
+        </div>
+        {/* --- НОВЫЙ БЛОК: Гарвардская тарелка --- */}
+        <div className="mt-8 border-t border-gray-100 pt-8 text-center">
+          <h3 className="text-lg font-bold mb-1 tracking-tight text-gray-900">
+            Принцип «Идеальной тарелки»
+          </h3>
+
+          {/* ИСПРАВЛЕНО: mb-6 -> mb-2 */}
+          <p className="text-xs text-gray-500 mb-2 max-w-xs mx-auto leading-relaxed">
+            Простой способ собрать сбалансированный обед без сложных расчетов.
+            Просто взгляни на свой поднос!
           </p>
 
-          {isEmpty ? (
-            <p className="mt-2 text-xs text-gray-500">
-              Добавь блюда, чтобы оценить сбалансированность заказа.
-            </p>
-          ) : isBalanced ? (
-            <div className="mt-3 inline-flex items-center gap-2.5 rounded-full bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-semibold">
-              <Smile size={25} strokeWidth={2.25} />
-              Получился сбалансированный заказ.
-            </div>
-          ) : (
-            <div className="mt-3 inline-flex items-center gap-2.5 rounded-full bg-red-100 text-red-700 px-3 py-1.5 text-xs font-semibold">
-              <Frown size={25} strokeWidth={2.25} />
-              Пропорции не соблюдены, рацион не сбалансирован.
-            </div>
-          )}
+          {/* ИСПРАВЛЕНО: mt-8 -> mt-2 и max-w-md для хорошего размера */}
+          <div className="relative w-full aspect-square max-w-md mx-auto opacity-90 hover:opacity-100 transition-opacity mt-2">
+            <Image
+              src="/images/harvard-plate.jpg"
+              alt="Инфографика: Гарвардская тарелка здорового питания"
+              fill
+              className="object-contain"
+            />
+          </div>
+          <p className="text-[10px] text-gray-400 mt-4 italic">
+            Источник: Harvard Health Publishing
+          </p>
         </div>
       </div>
     </div>

@@ -1,0 +1,340 @@
+# Техническая документация проекта Canteen (canteenTattelecom)
+
+## 1. Назначение проекта
+Веб-приложение корпоративной столовой на базе Next.js (App Router) для:
+- отображения меню по категориям;
+- добавления блюд в корзину;
+- контроля суточного лимита калорий;
+- просмотра БЖУ текущего заказа;
+- ведения избранных блюд;
+- отображения истории заказов;
+- загрузки и выдачи медиа-изображений блюд/комбо/hero-баннера.
+
+Проект использует серверное хранение состояния пользователя (гостевая сессия + БД), а не localStorage.
+
+## 2. Технологический стек
+- Next.js `16.2.2` (App Router)
+- React `19.2.4`
+- TypeScript `^5`
+- Tailwind CSS `^4`
+- Prisma ORM `^6.19.3`
+- PostgreSQL (datasource в Prisma)
+- Zustand `^5.0.12` (клиентский store с гидратацией с сервера)
+- Recharts `^3.8.1` (диаграмма БЖУ)
+- lucide-react `^1.8.0` (иконки)
+
+## 3. Быстрый запуск
+### 3.1. Предварительные требования
+- Node.js LTS
+- npm
+- PostgreSQL
+
+### 3.2. Переменные окружения
+В корне проекта должен быть `.env`:
+- `DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<db>?schema=public`
+
+### 3.3. Установка и запуск
+1. `npm install`
+2. Применить миграции Prisma (если уже есть): `npx prisma migrate deploy` или создать/применить dev-миграции в процессе разработки.
+3. Заполнить БД тестовыми данными: `npm run seed`
+4. Запуск dev-сервера: `npm run dev`
+5. Приложение: `http://localhost:3000`
+
+### 3.4. Полезные скрипты
+- `npm run dev` — запуск в режиме разработки
+- `npm run build` — production-сборка
+- `npm run start` — запуск production-сборки
+- `npm run lint` — ESLint
+- `npm run seed` — сидирование через `prisma/seed.ts`
+
+## 4. Архитектура
+### 4.1. Высокоуровневая схема
+- UI-слой: `src/components/**`, страницы `src/app/**`
+- Клиентское состояние: `src/store/useCartStore.ts`
+- API-слой: `src/app/api/**/route.ts`
+- Доменная/серверная логика: `src/lib/server/**`
+- Доступ к БД: `src/lib/prisma.ts`
+- Схема/модели БД: `prisma/schema.prisma`
+
+### 4.2. Принцип состояния
+1. При первом рендере клиент вызывает `useCartStore.initialize()`.
+2. Store делает `GET /api/state`.
+3. Сервер через cookie `canteen_guest_token` идентифицирует/создает гостевого пользователя.
+4. Сервер читает/создает `PENDING`-заказ, избранное и лимит калорий.
+5. Store получает единый `ClientState` и дальше обновляется только через API.
+
+Итог: фронтенд — тонкий слой, источник истины для корзины/избранного/лимита — сервер + БД.
+
+## 5. Структура проекта
+- `src/app/layout.tsx` — корневой layout, глобальный `TopActionHeader`
+- `src/app/page.tsx` — главная страница меню
+- `src/app/favorites/page.tsx` — страница избранного
+- `src/app/history/page.tsx` — история заказов
+- `src/app/api/**` — HTTP API
+- `src/components/shared/**` — UI-компоненты (карточки, корзина, хедер, виджеты)
+- `src/components/MacrosModal.tsx` — модалка БЖУ
+- `src/store/useCartStore.ts` — zustand-store
+- `src/lib/server/session-state.ts` — основная сессионная логика
+- `src/lib/server/history.ts` — агрегации истории/избранного
+- `src/lib/server/app-assets.ts` — hero-asset mapping
+- `prisma/schema.prisma` — модели данных
+- `prisma/seed.ts` — основное сидирование
+- `seed-manual.js` — старый/ручной сид (синхронность с текущей схемой не гарантирована)
+
+## 6. Модель данных (Prisma)
+### 6.1. Ключевые сущности
+- `User` — пользователь (включая гостевого), хранит `calorieLimit`
+- `Canteen` — столовая
+- `Category` — категория блюд
+- `Dish` — блюдо (цена, КБЖУ, состав, image, availability, stock)
+- `Favorite` — связка many-to-many User ↔ Dish
+- `Order` — заказ (`status`, `totalPrice`, `items: Json`)
+- `Combo` — комбо-наборы
+- `Media` — бинарные файлы изображений
+- `AppAsset` — привязка системных ключей (`hero_main`, `hero_decor`) к `Media`
+
+### 6.2. Заказ и корзина
+Корзина хранится в `Order` со статусом `PENDING`.
+Поле `items` хранит JSON-массив строк:
+- `{ dishId: string, quantity: number }`
+
+При чтении состояние нормализуется:
+- удаляются невалидные строки;
+- удаляются блюда, которых нет/недоступны;
+- пересчитывается `totalPrice`.
+
+### 6.3. Статусы заказа
+`OrderStatus`:
+- `PENDING`
+- `READY`
+- `COMPLETED`
+- `CANCELLED`
+
+Для истории используются только заказы `status != PENDING`.
+
+## 7. Сессии и идентификация пользователя
+Логика: `src/lib/server/session-state.ts`
+
+- Cookie: `canteen_guest_token`
+- Если cookie отсутствует, генерируется `UUID`, сохраняется на 1 год (`httpOnly`, `sameSite=lax`, `secure` в production).
+- Из cookie формируется guest-email: `guest-<token>@guest.local`.
+- По email выполняется `upsert` в `User`.
+
+Таким образом, пока cookie не удалены, пользователь получает стабильное серверное состояние.
+
+## 8. Клиентское состояние (Zustand)
+Файл: `src/store/useCartStore.ts`
+
+Состояние:
+- `items: CartItem[]`
+- `favorites: string[]`
+- `dailyLimit: number`
+- `isHydrated: boolean`
+
+Основные методы:
+- `initialize()` → `GET /api/state`
+- `addItem()` / `removeItem()` → `POST /api/cart` c `delta ±1`
+- `removeItemCompletely()` → `DELETE /api/cart`
+- `toggleFavorite()` → `POST /api/favorites`
+- `setDailyLimit()` → `POST /api/daily-limit`
+- `getTotalStats()` — суммарные калории/Б/Ж/У
+- `getTotalCount()` — общее число порций в корзине
+
+Обновления состояния идут через ответы API, а не через локальные optimistic-мутации.
+
+## 9. HTTP API
+
+### 9.1. Состояние
+`GET /api/state`
+- Возвращает `{ state: ClientState }`
+- 500 при ошибке
+
+### 9.2. Корзина
+`POST /api/cart`
+- Body: `{ dishId: string, delta: number }`
+- Изменяет количество блюда в корзине
+- Возвращает `{ state }`
+
+`DELETE /api/cart`
+- Body: `{ dishId: string }`
+- Полностью удаляет позицию из корзины
+- Возвращает `{ state }`
+
+### 9.3. Избранное
+`GET /api/favorites`
+- Возвращает `{ items: Dish[] }`
+
+`POST /api/favorites`
+- Body: `{ dishId: string }`
+- Toggle избранного
+- Возвращает `{ state }`
+
+### 9.4. Суточный лимит
+`POST /api/daily-limit`
+- Body: `{ dailyLimit: number }`
+- На сервере нормализация: `Math.max(1, floor(value))`
+- Возвращает `{ state }`
+
+### 9.5. История
+`GET /api/history`
+- Возвращает:
+  - `previousOrder`
+  - `frequentDishes` (top-8 по суммарному количеству)
+  - `favoriteDishes`
+  - `totalOrders`
+
+### 9.6. Медиа
+`POST /api/media`
+- multipart/form-data, поле `file`
+- Только image/*
+- Ограничение размера: до 8MB
+- Создает запись в `Media`, возвращает `{ media: { id, fileName, mimeType, size, url } }`
+
+`GET /api/media/:id`
+- Возвращает бинарный файл из `Media.data`
+- Заголовки:
+  - `Content-Type: <mimeType>`
+  - `Cache-Control: public, max-age=31536000, immutable`
+
+### 9.7. Привязка изображений к сущностям
+`POST /api/dishes/:id/image`
+- Body: `{ mediaId: string }`
+- Обновляет `Dish.image = /api/media/<mediaId>`
+
+`POST /api/combos/:id/image`
+- Body: `{ mediaId: string }`
+- Обновляет `Combo.image = /api/media/<mediaId>`
+
+### 9.8. Системные ассеты
+`GET /api/app-assets`
+- Возвращает словарь key → `/api/media/:id` для `hero_main`, `hero_decor`
+
+`POST /api/app-assets`
+- Body: `{ key: 'hero_main' | 'hero_decor', mediaId: string }`
+- Upsert в `AppAsset`
+
+## 10. UI и пользовательские сценарии
+### 10.1. Навигация
+`TopActionHeader`:
+- переходы `/`, `/favorites`, `/history`
+- кнопка корзины с badge количества
+- открытие `CartDrawer`
+
+### 10.2. Главная страница (`/`)
+- серверный fetch категорий и app-assets
+- авто-досоздание базовых категорий (`createMany + skipDuplicates`)
+- hero-секция
+- виджеты (`HeaderWidgets`)
+- секция комбо (пока placeholder)
+- витрина категорий (`CategoryShowcase`)
+
+### 10.3. Категории и карточки
+`CategoryShowcase`:
+- табы категорий + «Всё»
+- сортировка по `preferredOrder`, затем по имени
+
+`DishCard`:
+- лайк/анлайк блюда
+- изменение количества блюда в корзине
+- modal подробностей (состав, вес, БЖУ)
+- бейджи состава по `note`:
+  - свинина (по тексту/эмодзи)
+  - постное/веган
+
+### 10.4. Корзина
+`CartDrawer`:
+- список позиций
+- `+/-`, полное удаление
+- итоги по калориям и сумме
+
+### 10.5. Виджеты
+`HeaderWidgets`:
+- счетчик калорий относительно `dailyLimit`
+- редактирование лимита inline
+- ссылка в историю заказов
+- открытие модалки БЖУ
+
+`MacrosModal`:
+- donut-chart Б/Ж/У
+- проверка баланса по правилу `1:1:4` (допуск ±20%)
+
+### 10.6. История и избранное
+`/history`:
+- предыдущий завершенный заказ
+- часто заказываемые блюда
+- избранные блюда
+
+`/favorites`:
+- карточки блюд из избранного
+
+## 11. Сидирование и наполнение данных
+### 11.1. Основной сид
+Файл: `prisma/seed.ts`
+- очищает `dish/category/canteen`
+- создает canteen `main-canteen`
+- создает базовые категории
+- добавляет 10 демонстрационных блюд
+
+Запуск: `npm run seed`
+
+### 11.2. Дополнительный скрипт
+`seed-manual.js` — legacy-скрипт, может расходиться с актуальными предположениями и требует проверки перед использованием.
+
+## 12. Конфигурация
+### 12.1. Next.js
+`next.config.ts`:
+- задан `turbopack.root = __dirname` для корректного определения workspace root
+
+### 12.2. Prisma
+- схема: `prisma/schema.prisma`
+- конфиг: `prisma.config.ts`
+- datasource URL читается из `DATABASE_URL`
+
+## 13. Обработка ошибок и деградация
+- Все API возвращают JSON с `error` при исключениях.
+- На главной странице предусмотрен banner при проблемах с БД.
+- Store логирует ошибки операций в консоль и не падает критически на клиенте.
+
+## 14. Известные ограничения и риски
+1. Авторизация как отдельная бизнес-сущность отсутствует (гостевая cookie-модель).
+2. Нет checkout-процесса, который переводит `PENDING` в финальные статусы (READY/COMPLETED/CANCELLED) — без внешней логики история может быть пустой.
+3. Нет явной транзакционности вокруг некоторых связанных операций записи корзины.
+4. Нет rate-limit/anti-abuse на публичные API загрузки медиа.
+5. В `globals.css` есть dark-media правило, но визуал преимущественно дневной и не полностью адаптирован как полноценная dark-тема.
+6. Отсутствует тестовый контур (unit/integration/e2e).
+
+## 15. Рекомендации по развитию
+1. Добавить формальный checkout endpoint и управление статусами заказа.
+2. Ввести полноценную auth-модель (SSO/JWT/сессии) вместо guest-only.
+3. Добавить интеграционные тесты для API (`cart`, `favorites`, `history`).
+4. Ограничить и валидировать загрузку медиа (rate-limit, image processing, antivirus policy при необходимости).
+5. Вынести типы API-ответов в общий контрактный слой.
+6. Добавить миграции Prisma в репозиторий и регламент обновления схемы.
+
+## 16. Ключевые файлы для онбординга
+- `src/lib/server/session-state.ts` — центральная серверная логика состояния пользователя
+- `src/store/useCartStore.ts` — клиентская оркестрация API
+- `src/app/page.tsx` — основная композиция главной страницы
+- `src/app/api/**/route.ts` — контракт API
+- `prisma/schema.prisma` — фактическая доменная модель
+
+
+
+____________
+
+Главные Замечания
+1.Корзина и заказ хранятся как JSON внутри Order, это плохо масштабируется.
+В schema.prisma:74 и schema.prisma:82 Order.items хранится как Json. 
+Для MVP ок, но дальше будет больно: сложнее аналитика, поиск популярных блюд, обновление остатков, 
+валидация цен, история состава заказа, конкурентные изменения. 
+Лучше отдельная таблица OrderItem с dishId, quantity, priceSnapshot, nameSnapshot, macrosSnapshot.
+
+
+2. Дублируется тип блюда.
+Типы Dish руками повторяются в DishCard.tsx:7, 
+favorites/page.tsx:7, history/page.tsx:7. Пока терпимо, но при расширении полей начнутся рассинхроны. 
+Лучше вынести DTO-типы в src/types/dish.ts или строить типы от Prisma selec
+
+
+
+

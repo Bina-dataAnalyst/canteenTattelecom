@@ -8,7 +8,7 @@ import { useCartStore } from '@/store/useCartStore'
 import { CartDrawer } from './CartDrawer'
 
 const navButton =
-  'inline-flex items-center justify-center h-10 w-10 rounded-xl transition-colors border border-transparent hover:bg-orange-100 hover:text-orange-700'
+  'inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-lg transition-colors border border-transparent hover:bg-orange-100 hover:text-orange-700'
 
 export const TopActionHeader = () => {
   const pathname = usePathname()
@@ -23,12 +23,12 @@ export const TopActionHeader = () => {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-[140] border-b border-orange-100 bg-white/95 backdrop-blur">
-        <div className="container mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="font-black text-xl text-[#E65100] tracking-tight">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-10">
+          <Link href="/" className="min-w-0 font-black text-base text-[#E65100] sm:text-xl">
             Наша Столовая
           </Link>
 
-          <nav className="flex items-center gap-2 text-gray-600">
+          <nav className="flex shrink-0 items-center gap-1 text-gray-600 sm:gap-2">
             <Link href="/" className={`${navButton} ${pathname === '/' ? 'bg-orange-100 text-orange-700' : ''}`} title="Меню">
               <UtensilsCrossed size={18} />
             </Link>

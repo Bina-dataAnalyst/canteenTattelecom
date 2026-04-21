@@ -16,14 +16,14 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[120] flex">
+    <div className="fixed inset-0 z-[120] flex items-end sm:items-stretch">
       <button
         aria-label="Закрыть корзину"
         onClick={onClose}
         className="absolute inset-0 bg-black/35"
       />
 
-      <div className="relative ml-auto h-full w-full max-w-md bg-white shadow-2xl p-6 flex flex-col">
+      <div className="relative ml-auto flex h-[88dvh] w-full flex-col rounded-t-lg bg-white p-4 shadow-2xl sm:h-full sm:max-w-md sm:rounded-none sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-black flex items-center gap-2">
             <ShoppingCart size={24} className="text-orange-500" />

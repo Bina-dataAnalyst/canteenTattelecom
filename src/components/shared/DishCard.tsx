@@ -42,17 +42,17 @@ export const DishCard = ({ dish }: { dish: Dish }) => {
     <>
       <div
         onClick={() => setIsDetailsOpen(true)}
-        className="bg-white rounded-3xl p-4 shadow-sm border border-gray-50 flex flex-col relative group transition-all duration-300 hover:-translate-y-1 hover:rotate-[0.25deg] hover:scale-[1.02] hover:shadow-[0_20px_45px_-25px_rgba(2,6,23,0.45)] cursor-pointer"
+        className="group relative flex min-h-full cursor-pointer flex-col rounded-lg border border-gray-50 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_-25px_rgba(2,6,23,0.45)]"
       >
       {(hasPork || isVegan) && (
         <div className="absolute top-4 left-4 z-10 flex gap-2">
           {hasPork && (
-            <div className="bg-rose-100 text-rose-700 rounded-full p-1.5" title="Содержит свинину">
+            <div className="rounded-lg bg-rose-100 p-1.5 text-rose-700" title="Содержит свинину">
               <PiggyBank size={14} />
             </div>
           )}
           {isVegan && (
-            <div className="bg-emerald-100 text-emerald-700 rounded-full p-1.5" title="Постный состав">
+            <div className="rounded-lg bg-emerald-100 p-1.5 text-emerald-700" title="Постный состав">
               <Sprout size={14} />
             </div>
           )}
@@ -72,7 +72,7 @@ export const DishCard = ({ dish }: { dish: Dish }) => {
       </button>
 
       {showConfirm && (
-        <div className="absolute inset-0 bg-white/90 z-20 rounded-3xl flex flex-col items-center justify-center p-4 text-center animate-in fade-in zoom-in duration-200">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-lg bg-white/90 p-4 text-center animate-in fade-in zoom-in duration-200">
           <p className="text-xs font-bold mb-3">Удалить из избранного?</p>
           <div className="flex gap-2">
             <button
@@ -91,7 +91,7 @@ export const DishCard = ({ dish }: { dish: Dish }) => {
         </div>
       )}
 
-      <div className="w-full h-32 bg-gray-100 rounded-2xl mb-3 overflow-hidden relative">
+      <div className="relative mb-3 h-36 w-full overflow-hidden rounded-lg bg-gray-100 sm:h-32">
         {dish.image ? (
           <Image src={dish.image} alt={dish.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
         ) : null}
@@ -115,18 +115,18 @@ export const DishCard = ({ dish }: { dish: Dish }) => {
                 carbs: dish.carbs || 0,
               })
             }}
-            className="bg-orange-500 text-white p-2 rounded-xl hover:bg-orange-600 transition-colors"
+            className="rounded-lg bg-orange-500 p-2 text-white transition-colors hover:bg-orange-600"
           >
             <Plus size={20} />
           </button>
         ) : (
-          <div className="flex items-center gap-3 bg-gray-100 rounded-xl p-1">
+          <div className="flex items-center gap-3 rounded-lg bg-gray-100 p-1">
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 void removeItem(dish.id)
               }}
-              className="bg-white text-orange-500 p-1 rounded-lg shadow-sm hover:bg-orange-50"
+              className="rounded-lg bg-white p-1 text-orange-500 shadow-sm hover:bg-orange-50"
             >
               <Minus size={16} />
             </button>
@@ -146,7 +146,7 @@ export const DishCard = ({ dish }: { dish: Dish }) => {
                   carbs: dish.carbs || 0,
                 })
               }}
-              className="bg-orange-500 text-white p-1 rounded-lg shadow-sm hover:bg-orange-600"
+              className="rounded-lg bg-orange-500 p-1 text-white shadow-sm hover:bg-orange-600"
             >
               <Plus size={16} />
             </button>
@@ -156,13 +156,13 @@ export const DishCard = ({ dish }: { dish: Dish }) => {
       </div>
 
       {isDetailsOpen && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
           <button
             className="absolute inset-0"
             aria-label="Закрыть окно блюда"
             onClick={() => setIsDetailsOpen(false)}
           />
-          <div className="relative w-full max-w-lg rounded-[32px] bg-white p-6 shadow-2xl border border-orange-100">
+          <div className="relative max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-lg border border-orange-100 bg-white p-4 shadow-2xl sm:p-6">
             <button
               onClick={() => setIsDetailsOpen(false)}
               className="absolute top-5 right-5 text-gray-400 hover:text-black"
@@ -170,23 +170,23 @@ export const DishCard = ({ dish }: { dish: Dish }) => {
               <X size={22} />
             </button>
 
-            <h3 className="text-2xl font-black text-[#2E7D32] pr-8">{dish.name}</h3>
+            <h3 className="pr-8 text-xl font-black text-[#2E7D32] sm:text-2xl">{dish.name}</h3>
             <p className="text-sm text-gray-500 mt-1">{dish.weight ? `Вес: ${dish.weight}` : 'Вес не указан'}</p>
 
-            <div className="mt-5 grid grid-cols-4 gap-3 text-center">
-              <div className="rounded-2xl bg-orange-50 p-3">
+            <div className="mt-5 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+              <div className="rounded-lg bg-orange-50 p-3">
                 <p className="text-[10px] text-orange-700 uppercase font-bold">Ккал</p>
                 <p className="font-black text-orange-600">{dish.calories ?? 0}</p>
               </div>
-              <div className="rounded-2xl bg-emerald-50 p-3">
+              <div className="rounded-lg bg-emerald-50 p-3">
                 <p className="text-[10px] text-emerald-700 uppercase font-bold">Белки</p>
                 <p className="font-black text-emerald-600">{dish.proteins ?? 0}г</p>
               </div>
-              <div className="rounded-2xl bg-amber-50 p-3">
+              <div className="rounded-lg bg-amber-50 p-3">
                 <p className="text-[10px] text-amber-700 uppercase font-bold">Жиры</p>
                 <p className="font-black text-amber-600">{dish.fats ?? 0}г</p>
               </div>
-              <div className="rounded-2xl bg-sky-50 p-3">
+              <div className="rounded-lg bg-sky-50 p-3">
                 <p className="text-[10px] text-sky-700 uppercase font-bold">Углеводы</p>
                 <p className="font-black text-sky-600">{dish.carbs ?? 0}г</p>
               </div>
@@ -202,13 +202,13 @@ export const DishCard = ({ dish }: { dish: Dish }) => {
             {(hasPork || isVegan) && (
               <div className="mt-5 flex flex-wrap gap-2">
                 {hasPork && (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-rose-100 text-rose-700 px-3 py-1.5 text-xs font-semibold">
+                  <div className="inline-flex items-center gap-2 rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700">
                     <PiggyBank size={14} />
                     Содержит свинину
                   </div>
                 )}
                 {isVegan && (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 text-emerald-700 px-3 py-1.5 text-xs font-semibold">
+                  <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                     <Sprout size={14} />
                     Постный состав
                   </div>

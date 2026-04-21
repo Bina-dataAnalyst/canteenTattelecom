@@ -8,8 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,6 +23,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -33,3 +34,70 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* .petal-widget {
+  clip-path: polygon(
+    24px 0,
+    100% 0,
+    100% calc(100% - 24px),
+    calc(100% - 24px) 100%,
+    0 100%,
+    0 24px
+  );
+} */
+
+.petal-widget::before,
+.petal-widget::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.petal-widget::before {
+  inset: 0;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  clip-path: inherit;
+}
+
+.petal-widget::after {
+  right: 14px;
+  bottom: 12px;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px 0 0 0;
+  opacity: 0.18;
+  transform: rotate(45deg);
+}
+
+.petal-widget--orange {
+  background:
+    radial-gradient(circle at 18% 12%, rgb(251 140 0 / 0.18), transparent 34%),
+    linear-gradient(135deg, rgb(255 255 255 / 0.94), rgb(255 247 237 / 0.92));
+  box-shadow: inset 6px 0 0 rgb(251 140 0 / 0.72);
+}
+
+/* .petal-widget--orange::after {
+  background: #fb8c00;
+} */
+
+.petal-widget--green {
+  background:
+    radial-gradient(circle at 18% 12%, rgb(76 175 80 / 0.18), transparent 34%),
+    linear-gradient(135deg, rgb(255 255 255 / 0.94), rgb(240 253 244 / 0.92));
+  box-shadow: inset 6px 0 0 rgb(76 175 80 / 0.72);
+}
+
+/* .petal-widget--green::after {
+  background: #4caf50;
+} */
+
+.petal-widget--blue {
+  background:
+    radial-gradient(circle at 18% 12%, rgb(33 150 243 / 0.18), transparent 34%),
+    linear-gradient(135deg, rgb(255 255 255 / 0.94), rgb(239 246 255 / 0.92));
+  box-shadow: inset 6px 0 0 rgb(33 150 243 / 0.72);
+}
+
+/* .petal-widget--blue::after {
+  background: #2196f3;
+} */
